@@ -33,6 +33,8 @@
       border-radius: 8px;
       z-index: 2;
       pointer-events: none;
+      opacity: 1;
+      transition: opacity 0.5s ease; /* 서서히 나타나기용 */
     }
 
     /* LP판을 감싸는 래퍼: "옆으로 슬라이드"만 담당 */
@@ -143,11 +145,26 @@
     var clickTimer     = null;
     var CLICK_DELAY    = 250;    // ms
 
-    // 현재 인덱스에 맞춰 이미지 변경
-    function updateImages() {
+    // 현재 인덱스에 맞춰 커버 & LP 이미지 변경
+    // - 커버: 살짝 사라졌다가 새 이미지로 페이드 인
+    // - 디스크: 커버보다 조금 늦게 변경
+    function updateVisualsForCurrentTrack() {
       if (!lpCover || !lpDisc) return;
-      lpCover.style.backgroundImage = 'url("' + coverImages[currentIndex] + '")';
-      lpDisc.style.backgroundImage   = 'url("' + discImages[currentIndex] + '")';
+
+      var coverUrl = 'url("' + coverImages[currentIndex] + '")';
+      var discUrl  = 'url("' + discImages[currentIndex] + '")';
+
+      // 커버: 서서히 나타나기
+      lpCover.style.opacity = 0; // 먼저 살짝 숨김
+      setTimeout(function () {
+        lpCover.style.backgroundImage = coverUrl;
+        lpCover.style.opacity = 1; // transition으로 부드럽게 등장
+      }, 150); // 약간의 딜레이 후 이미지 교체 + 페이드 인
+
+      // LP 디스크: 커버보다 조금 늦게 이미지 변경
+      setTimeout(function () {
+        lpDisc.style.backgroundImage = discUrl;
+      }, 350); // 커버 바뀐 후 약간 뒤에 변경되는 느낌
     }
 
     // 3. API 코드가 로드되면 이 함수가 자동 호출됨
@@ -172,7 +189,7 @@
     // 4. 플레이어 준비 완료 시
     function onPlayerReady(event) {
       // 첫 로드시 0번 곡 이미지 세팅
-      updateImages();
+      updateVisualsForCurrentTrack();
 
       // 단일 클릭
       lpArea.addEventListener('click', function () {
@@ -245,7 +262,7 @@
     function playCurrent() {
       if (!player) return;
       startedOnce = true;
-      updateImages();
+      updateVisualsForCurrentTrack();
       player.loadVideoById(playlist[currentIndex]);
       player.playVideo();
       lpArea.classList.add('playing');
@@ -255,7 +272,7 @@
     function nextTrack() {
       if (!player) return;
       currentIndex = (currentIndex + 1) % playlist.length; // 마지막 다음 → 0번
-      updateImages();
+      updateVisualsForCurrentTrack();
       player.loadVideoById(playlist[currentIndex]);
       player.playVideo();
       lpArea.classList.add('playing');
