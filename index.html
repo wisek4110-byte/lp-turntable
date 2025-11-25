@@ -23,14 +23,24 @@
       cursor: pointer;
     }
 
+    /* 커버 뒤, LP 앞에 놓이는 고정 배경 레이어 */
+    .lp-bg {
+      position: absolute;
+      inset: 0;
+      background: #ffffff;   /* 흰색 배경 – 색 바꾸고 싶으면 여기 변경 */
+      border-radius: 8px;
+      z-index: 1;            /* LP(0)보다는 위, 커버(2)보다는 아래 */
+      pointer-events: none;
+    }
+
     /* LP 커버 이미지 */
     .lp-cover {
       position: absolute;
-      inset: 0; /* top/right/bottom/left = 0 */
+      inset: 0;
       background-size: cover;
       background-position: center;
       border-radius: 8px;
-      z-index: 2;
+      z-index: 2;            /* lp-bg 위 */
       pointer-events: none;
       opacity: 1;
       transition: opacity 0.8s ease-in-out; /* 커버 부드러운 페이드 */
@@ -43,7 +53,7 @@
       height: 87.5%;
       top: 10%;       /* 40/400 */
       left: 12.25%;   /* 49/400 */
-      z-index: 1;
+      z-index: 0;     /* 제일 아래 (커버/배경보다 뒤) */
 
       /* 기본: 커버 안쪽에 숨어 있음 (비율 기준) */
       transform: translateX(-14%);
@@ -93,6 +103,10 @@
 <body>
 
   <div class="lp-wrapper" id="lp-area">
+    <!-- 중간 배경 레이어 -->
+    <div class="lp-bg"></div>
+
+    <!-- 커버 -->
     <div class="lp-cover"></div>
 
     <!-- 슬라이드 + 회전 LP -->
@@ -133,7 +147,7 @@
 
     var currentIndex   = 0;      // 현재 곡 인덱스
     var player;
-    var audioEnabled   = false;  // 사용자 상호작용(첫 클릭) 여부
+    var audioEnabled   = false;  // 사용자 상호작용(첫 클릭) 허용 여부
     var startedOnce    = false;  // 한 번이라도 재생된 적 있는지
     var lpArea         = document.getElementById('lp-area');
     var lpCover        = document.querySelector('.lp-cover');
@@ -164,7 +178,7 @@
       // 2) LP 디스크: 커버 변경보다 조금 더 늦게 변경
       setTimeout(function () {
         lpDisc.style.backgroundImage = discUrl;
-      }, 500); // 커버 완전히 바뀐 뒤 한 템포 늦게 라벨 교체
+      }, 1200); // 커버 완전히 바뀐 뒤 한 템포 늦게 라벨 교체
     }
 
     // 3. API 코드가 로드되면 이 함수가 자동 호출됨
@@ -298,4 +312,3 @@
   </script>
 </body>
 </html>
-
