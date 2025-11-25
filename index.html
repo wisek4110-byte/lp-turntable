@@ -115,11 +115,6 @@
     <!-- 1. 이 div가 유튜브 iframe으로 바뀜 -->
     <div id="player"></div>
 
-    <div class="hint">
-      한 번 클릭해서 음악 허용 → 마우스를 올리면 회전 + 재생, 떼면 일시정지
-    </div>
-  </div>
-
   <script>
     // 2. IFrame Player API를 비동기로 로드 (유튜브 예제 방식)
     var tag = document.createElement('script');
@@ -136,7 +131,7 @@
       player = new YT.Player('player', {
         height: '0',
         width: '0',
-        videoId: 'kAAcl3nIe24',  // ← 여기 당신이 준 영상 ID
+        videoId: 'kAAcl3nIe24',  // ← 여기에 영상 ID
         playerVars: {
           'playsinline': 1,
           'autoplay': 0,
@@ -181,3 +176,4 @@
   </script>
 </body>
 </html>
+
