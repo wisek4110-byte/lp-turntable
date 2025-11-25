@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
   <meta charset="UTF-8">
-  <title>LP Cover Slide + Rotate</title>
+  <title>LP Turntable Player</title>
 
   <style>
     body {
@@ -27,17 +27,16 @@
     .lp-cover {
       position: absolute;
       inset: 0; /* top/right/bottom/left = 0 */
-      /* 기본 이미지는 JS에서 설정 (곡마다 변경용) */
       background-size: cover;
       background-position: center;
       border-radius: 8px;
       z-index: 2;
       pointer-events: none;
       opacity: 1;
-      transition: opacity 0.5s ease; /* 서서히 나타나기용 */
+      transition: opacity 0.8s ease-in-out; /* 커버 부드러운 페이드 */
     }
 
-    /* LP판을 감싸는 래퍼: "옆으로 슬라이드"만 담당 */
+    /* LP판을 감싸는 래퍼: "옆으로 슬라이드" 담당 */
     .lp-disc-wrapper {
       position: absolute;
       width: 87.5%;   /* 350/400 */
@@ -46,9 +45,9 @@
       left: 12.25%;   /* 49/400 */
       z-index: 1;
 
-      /* 기본: 커버 안쪽에 숨어 있음 (비율 기준으로 조정) */
+      /* 기본: 커버 안쪽에 숨어 있음 (비율 기준) */
       transform: translateX(-14%);
-      transition: transform 0.6s ease;
+      transition: transform 1s ease-in-out;  /* 더 느리고 부드럽게 슬라이드 */
     }
 
     /* 재생 중일 때만 LP가 밖으로 튀어나옴 */
@@ -61,7 +60,6 @@
       width: 100%;
       height: 100%;
       border-radius: 50%;
-      /* 기본 이미지는 JS에서 설정 (곡마다 변경용) */
       background-size: cover;
       background-position: center;
 
@@ -74,7 +72,7 @@
       animation-play-state: running;
     }
 
-    /* 회전 애니메이션 (회전만! 위치 X) */
+    /* 회전 애니메이션 */
     @keyframes spin {
       from { transform: rotate(0deg); }
       to   { transform: rotate(360deg); }
@@ -113,14 +111,14 @@
     var firstScriptTag = document.getElementsByTagName('script')[0];
     firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
 
-    // 2. 플레이리스트
+    // 2. 플레이리스트 (YouTube 영상 ID)
     var playlist = [
       "kAAcl3nIe24", // 1번 곡
       "9uxYuIpvsjw", // 2번 곡
       "iv9rmTEaECw"  // 3번 곡
     ];
 
-    // 곡별 커버 이미지 / LP 이미지
+    // 곡별 커버 이미지 / LP 이미지 (파일명은 상황에 맞게 변경)
     var coverImages = [
       "lp-cover1.png",
       "lp-cover2.png",
@@ -146,25 +144,27 @@
     var CLICK_DELAY    = 250;    // ms
 
     // 현재 인덱스에 맞춰 커버 & LP 이미지 변경
-    // - 커버: 살짝 사라졌다가 새 이미지로 페이드 인
-    // - 디스크: 커버보다 조금 늦게 변경
+    // - 커버: 페이드 아웃 후 새 이미지로 페이드 인
+    // - 디스크: 커버보다 늦게 라벨 이미지 교체
     function updateVisualsForCurrentTrack() {
       if (!lpCover || !lpDisc) return;
 
       var coverUrl = 'url("' + coverImages[currentIndex] + '")';
       var discUrl  = 'url("' + discImages[currentIndex] + '")';
 
-      // 커버: 서서히 나타나기
-      lpCover.style.opacity = 0; // 먼저 살짝 숨김
+      // 1) 커버: 먼저 서서히 사라짐
+      lpCover.style.opacity = 0;
+
+      // 커버가 사라질 시간을 기다렸다가 이미지 교체 + 다시 나타나기
       setTimeout(function () {
         lpCover.style.backgroundImage = coverUrl;
-        lpCover.style.opacity = 1.5; // transition으로 부드럽게 등장
-      }, 130); // 약간의 딜레이 후 이미지 교체 + 페이드 인
+        lpCover.style.opacity = 1; // transition으로 부드럽게 등장
+      }, 800); // CSS transition 시간(0.8s)에 맞춤
 
-      // LP 디스크: 커버보다 조금 늦게 이미지 변경
+      // 2) LP 디스크: 커버 변경보다 조금 더 늦게 변경
       setTimeout(function () {
         lpDisc.style.backgroundImage = discUrl;
-      }, 130); // 커버 바뀐 후 약간 뒤에 변경되는 느낌
+      }, 1200); // 커버 완전히 바뀐 뒤 한 템포 늦게 라벨 교체
     }
 
     // 3. API 코드가 로드되면 이 함수가 자동 호출됨
@@ -191,7 +191,7 @@
       // 첫 로드시 0번 곡 이미지 세팅
       updateVisualsForCurrentTrack();
 
-      // 단일 클릭
+      // 단일 클릭: 재생/일시정지
       lpArea.addEventListener('click', function () {
         if (!audioEnabled) {
           audioEnabled = true; // 브라우저 오디오 정책용
@@ -207,7 +207,7 @@
         }, CLICK_DELAY);
       });
 
-      // 더블클릭
+      // 더블클릭: 다음 곡
       lpArea.addEventListener('dblclick', function () {
         if (!player) return;
 
@@ -271,7 +271,7 @@
     // 다음 트랙으로 이동 (마지막 다음 → 첫 곡으로)
     function nextTrack() {
       if (!player) return;
-      currentIndex = (currentIndex + 1) % playlist.length; // 마지막 다음 → 0번
+      currentIndex = (currentIndex + 1) % playlist.length;
       updateVisualsForCurrentTrack();
       player.loadVideoById(playlist[currentIndex]);
       player.playVideo();
@@ -298,4 +298,3 @@
   </script>
 </body>
 </html>
-
