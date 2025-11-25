@@ -23,7 +23,7 @@
       cursor: pointer;
     }
 
-    /* 중간 배경 레이어 */
+    /* 커버 뒤, LP 앞에 놓이는 고정 배경 레이어 */
     .lp-bg {
       position: absolute;
       inset: 0;
@@ -54,10 +54,10 @@
       z-index: 3;
       pointer-events: none;
       opacity: 0;
-      transition: opacity 0.8s ease-in-out;
+      transition: opacity 0.6s ease-in-out; /* 페이드 속도 */
     }
 
-    /* LP판 */
+    /* LP판 래퍼 (슬라이드) */
     .lp-disc-wrapper {
       position: absolute;
       width: 87.5%;
@@ -66,20 +66,20 @@
       left: 12.25%;
       z-index: 0;
       transform: translateX(-14%);
-      transition: transform 1s ease-in-out;
+      transition: transform 0.6s ease-in-out;  /* ← 더 빠르게 */
     }
 
     .lp-wrapper.playing .lp-disc-wrapper {
       transform: translateX(66%);
     }
 
+    /* LP 원판 */
     .lp-disc {
       width: 100%;
       height: 100%;
       border-radius: 50%;
       background-size: cover;
       background-position: center;
-
       animation: spin 3.2s linear infinite;
       animation-play-state: paused;
     }
@@ -93,6 +93,7 @@
       to   { transform: rotate(360deg); }
     }
 
+    /* 유튜브 iframe 숨김 */
     #player {
       position: absolute;
       width: 0;
@@ -107,7 +108,6 @@
 <body>
 
   <div class="lp-wrapper" id="lp-area">
-
     <div class="lp-bg"></div>
 
     <!-- 아래: 이전 커버 -->
@@ -121,23 +121,24 @@
       <div class="lp-disc"></div>
     </div>
 
+    <!-- 유튜브 플레이어 -->
     <div id="player"></div>
   </div>
 
   <script>
-    /* YouTube API 로드 */
+    // YouTube IFrame API 로드
     var tag = document.createElement('script');
     tag.src = "https://www.youtube.com/iframe_api";
     document.body.appendChild(tag);
 
-    /* 플레이리스트 */
+    // 플레이리스트
     var playlist = [
       "kAAcl3nIe24",
       "9uxYuIpvsjw",
       "iv9rmTEaECw"
     ];
 
-    /* 커버/디스크 이미지 */
+    // 곡별 커버 / LP 이미지
     var coverImages = [
       "lp-cover1.png",
       "lp-cover2.png",
@@ -155,38 +156,58 @@
     var audioEnabled = false;
     var startedOnce = false;
 
-    var lpArea  = document.getElementById("lp-area");
+    var lpArea   = document.getElementById("lp-area");
     var coverOld = document.querySelector(".lp-cover-old");
     var coverNew = document.querySelector(".lp-cover-new");
     var lpDisc   = document.querySelector(".lp-disc");
 
-    var clickTimer = null;
-    var CLICK_DELAY = 250;
+    // 이전 커버/디스크 이미지 URL 저장용
+    var lastCoverUrl = null;
+    var lastDiscUrl  = null;
 
-    /* 커버 전환 애니메이션 */
+    var clickTimer   = null;
+    var CLICK_DELAY  = 250;
+
+    // 현재 트랙에 맞게 비주얼 업데이트
     function updateVisualsForCurrentTrack() {
-      var coverUrl = 'url("' + coverImages[currentIndex] + '")';
-      var discUrl  = 'url("' + discImages[currentIndex] + '")';
+      var newCoverUrl = 'url("' + coverImages[currentIndex] + '")';
+      var newDiscUrl  = 'url("' + discImages[currentIndex] + '")';
 
-      /* 현재 커버를 아래 레이어로 복사 */
-      coverOld.style.backgroundImage = coverUrl;
+      // 첫 호출일 때: 바로 세팅하고 종료 (페이드 X)
+      if (!lastCoverUrl) {
+        lastCoverUrl = newCoverUrl;
+        lastDiscUrl  = newDiscUrl;
 
-      /* 새 커버 설정 (투명한 상태) */
-      coverNew.style.opacity = 0;
-      coverNew.style.backgroundImage = coverUrl;
-
-      /* 딜레이 후 천천히 페이드 인 */
-      setTimeout(() => {
+        coverOld.style.backgroundImage = lastCoverUrl;
+        coverNew.style.backgroundImage = lastCoverUrl;
         coverNew.style.opacity = 1;
-      }, 50);
 
-      /* LP 디스크 라벨은 나중에 변경 */
-      setTimeout(() => {
-        lpDisc.style.backgroundImage = discUrl;
-      }, 600);
+        lpDisc.style.backgroundImage = lastDiscUrl;
+        return;
+      }
+
+      // 아래 레이어엔 이전 커버 유지
+      coverOld.style.backgroundImage = lastCoverUrl;
+
+      // 새 커버 준비 (투명 상태)
+      coverNew.style.opacity = 0;
+      coverNew.style.backgroundImage = newCoverUrl;
+
+      // 약간의 딜레이 후 페이드 인
+      setTimeout(function () {
+        coverNew.style.opacity = 1;
+      }, 20); // 1 프레임 정도 후에 실행
+
+      // LP 레이블은 커버보다 살짝 늦게 변경
+      setTimeout(function () {
+        lpDisc.style.backgroundImage = newDiscUrl;
+        // 이제 이 트랙이 "이전 커버"가 됨
+        lastCoverUrl = newCoverUrl;
+        lastDiscUrl  = newDiscUrl;
+      }, 400); // 페이드 중간쯤 바뀌는 느낌
     }
 
-    /* YouTube Player Ready */
+    // YouTube API Ready
     function onYouTubeIframeAPIReady() {
       player = new YT.Player('player', {
         height: '0',
@@ -198,19 +219,22 @@
     }
 
     function onPlayerReady() {
+      // 첫 트랙 이미지 세팅
       updateVisualsForCurrentTrack();
 
-      lpArea.addEventListener("click", () => {
+      // 단일 클릭: 재생/일시정지
+      lpArea.addEventListener("click", function () {
         if (!audioEnabled) audioEnabled = true;
         if (clickTimer) return;
 
-        clickTimer = setTimeout(() => {
+        clickTimer = setTimeout(function () {
           clickTimer = null;
           handleSingleClick();
         }, CLICK_DELAY);
       });
 
-      lpArea.addEventListener("dblclick", () => {
+      // 더블클릭: 다음 곡
+      lpArea.addEventListener("dblclick", function () {
         if (clickTimer) {
           clearTimeout(clickTimer);
           clickTimer = null;
@@ -219,9 +243,12 @@
       });
     }
 
-    /* 단일 클릭: 재생/일시정지 */
+    // 단일 클릭: 재생/일시정지
     function handleSingleClick() {
-      if (!startedOnce) return playCurrent();
+      if (!startedOnce) {
+        playCurrent();
+        return;
+      }
 
       var state = player.getPlayerState();
 
@@ -234,7 +261,7 @@
       }
     }
 
-    /* 더블클릭: 다음곡 */
+    // 더블클릭: 다음 곡
     function handleDoubleClick() {
       if (!startedOnce) {
         currentIndex = (currentIndex + 1) % playlist.length;
@@ -260,7 +287,6 @@
       lpArea.classList.add("playing");
     }
 
-    /* 유튜브 상태 */
     function onPlayerStateChange(event) {
       if (event.data === YT.PlayerState.PLAYING) {
         lpArea.classList.add("playing");
