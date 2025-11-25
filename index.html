@@ -112,19 +112,22 @@
     var firstScriptTag = document.getElementsByTagName('script')[0];
     firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
 
-    // 2. 플레이리스트: 여기 영상 ID들을 넣으면 됨
-    //    예) https://www.youtube.com/watch?v=kAAcl3nIe24 → "kAAcl3nIe24"
+    // 2. 플레이리스트
     var playlist = [
       "kAAcl3nIe24", // 1번 곡
-      "9uxYuIpvsjw", //2번 곡
-      "iv9rmTEaECw" //3번 곡
+      "9uxYuIpvsjw", // 2번 곡
+      "iv9rmTEaECw"  // 3번 곡
     ];
 
-    var currentIndex = 0;     // 현재 곡 인덱스
+    var currentIndex   = 0;      // 현재 곡 인덱스
     var player;
-    var audioEnabled = false; // 사용자 상호작용(클릭) 여부
-    var startedOnce = false;  // 첫 재생 여부
-    var lpArea = document.getElementById('lp-area');
+    var audioEnabled   = false;  // 사용자 상호작용(첫 클릭) 여부
+    var startedOnce    = false;  // 한 번이라도 재생된 적 있는지
+    var lpArea         = document.getElementById('lp-area');
+
+    // 클릭/더블클릭 구분용
+    var clickTimer     = null;
+    var CLICK_DELAY    = 250;    // ms
 
     // 3. API 코드가 로드되면 이 함수가 자동 호출됨
     function onYouTubeIframeAPIReady() {
@@ -147,29 +150,77 @@
 
     // 4. 플레이어 준비 완료 시
     function onPlayerReady(event) {
+      // 단일 클릭
       lpArea.addEventListener('click', function () {
-        // 첫 사용자 상호작용 기록 (사운드 허용용)
         if (!audioEnabled) {
-          audioEnabled = true;
+          audioEnabled = true; // 브라우저 오디오 정책용
         }
         if (!player) return;
 
-        // 아직 한 번도 안 틀었으면: 현재 인덱스(0번) 재생
-        if (!startedOnce) {
-          startedOnce = true;
-          playCurrent();
-          return;
-        }
+        // 더블클릭 기다리는 중이면 여기선 아무 것도 안 함
+        if (clickTimer) return;
 
-        // 이미 한 번이라도 재생한 적이 있으면:
-        // 클릭할 때마다 다음 곡으로 넘어감
-        nextTrack();
+        clickTimer = setTimeout(function () {
+          clickTimer = null;
+          handleSingleClick();
+        }, CLICK_DELAY);
       });
+
+      // 더블클릭
+      lpArea.addEventListener('dblclick', function () {
+        if (!player) return;
+
+        // 예정된 단일 클릭 동작 취소
+        if (clickTimer) {
+          clearTimeout(clickTimer);
+          clickTimer = null;
+        }
+        handleDoubleClick();
+      });
+    }
+
+    // 단일 클릭: 재생/일시정지 토글
+    function handleSingleClick() {
+      if (!player) return;
+
+      // 아직 안 틀어봤으면 현재 곡 재생
+      if (!startedOnce) {
+        playCurrent();
+        return;
+      }
+
+      var state = player.getPlayerState();
+
+      if (state === YT.PlayerState.PLAYING) {
+        // 재생 중 → 일시정지 + LP 넣기
+        player.pauseVideo();
+        lpArea.classList.remove('playing');
+      } else {
+        // 일시정지/끝남/대기 상태 → 다시 재생 + LP 빼기
+        player.playVideo();
+        lpArea.classList.add('playing');
+      }
+    }
+
+    // 더블클릭: 다음 곡으로 넘기기
+    function handleDoubleClick() {
+      if (!player) return;
+
+      // 한 번도 재생한 적 없다면, 다음 곡으로 인덱스 옮기고 재생 시작
+      if (!startedOnce) {
+        currentIndex = (currentIndex + 1) % playlist.length;
+        playCurrent();
+        return;
+      }
+
+      // 이미 재생 경험이 있으면 그냥 다음 트랙
+      nextTrack();
     }
 
     // 현재 인덱스 곡 재생 + LP 애니메이션 ON
     function playCurrent() {
       if (!player) return;
+      startedOnce = true;
       player.loadVideoById(playlist[currentIndex]);
       player.playVideo();
       lpArea.classList.add('playing');
@@ -194,18 +245,14 @@
       // 곡이 끝나면 LP가 자동으로 들어가도록
       if (event.data === YT.PlayerState.ENDED) {
         lpArea.classList.remove('playing');
-        // 여기서는 자동으로 다음 곡 재생하지 않음
-        // → 사용자가 다시 클릭하면 nextTrack() 호출되면서 다음 곡 재생
+        // 끝난 뒤 다음 곡은 사용자가 더블클릭으로 넘김
       }
 
-      // 일시정지 시에도 LP 멈추고 들어가고 싶다면 아래 주석 해제
-      /*
+      // 일시정지 시에도 LP 넣기
       if (event.data === YT.PlayerState.PAUSED) {
         lpArea.classList.remove('playing');
       }
-      */
     }
   </script>
 </body>
 </html>
-
