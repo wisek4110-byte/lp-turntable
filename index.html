@@ -42,8 +42,8 @@
       border-radius: 8px;
       z-index: 2;            /* lp-bg 위 */
       pointer-events: none;
-      opacity: 1;
-      transition: opacity 0.8s ease-in-out; /* 커버 부드러운 페이드 */
+      opacity: 2;
+      transition: opacity 0.3s ease-in-out; /* 커버 부드러운 페이드 */
     }
 
     /* LP판을 감싸는 래퍼: "옆으로 슬라이드" 담당 */
@@ -173,12 +173,12 @@
       setTimeout(function () {
         lpCover.style.backgroundImage = coverUrl;
         lpCover.style.opacity = 1; // transition으로 부드럽게 등장
-      }, 800); // CSS transition 시간(0.8s)에 맞춤
+      }, 500); // CSS transition 시간
 
       // 2) LP 디스크: 커버 변경보다 조금 더 늦게 변경
       setTimeout(function () {
         lpDisc.style.backgroundImage = discUrl;
-      }, 1200); // 커버 완전히 바뀐 뒤 한 템포 늦게 라벨 교체
+      }, 1000); // 커버 완전히 바뀐 뒤 한 템포 늦게 라벨 교체
     }
 
     // 3. API 코드가 로드되면 이 함수가 자동 호출됨
@@ -312,3 +312,4 @@
   </script>
 </body>
 </html>
+
