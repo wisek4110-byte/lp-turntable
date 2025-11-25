@@ -15,20 +15,19 @@
       font-family: system-ui, sans-serif;
     }
 
-    /* 전체 LP 영역 */
+    /* 전체 LP 영역 - 반응형 */
     .lp-wrapper {
       position: relative;
-      width: 400px;   /* 커버 크기 (필요하면 조정) */
-      height: 400px;
+      width: min(80vw, 400px); /* 화면 크기에 따라 자동 줄어듦, 최대 400px */
+      aspect-ratio: 1 / 1;     /* 정사각형 유지 */
       cursor: pointer;
-      /* hover 때 transform 제거해서 '움찔거림' 방지 */
     }
 
     /* LP 커버 이미지 */
     .lp-cover {
       position: absolute;
       inset: 0; /* top/right/bottom/left = 0 */
-      background-image: url("lp-cover.png");  /* 사용자 커버 이미지 */
+      /* 기본 이미지는 JS에서 설정 (곡마다 변경용) */
       background-size: cover;
       background-position: center;
       border-radius: 8px;
@@ -39,20 +38,20 @@
     /* LP판을 감싸는 래퍼: "옆으로 슬라이드"만 담당 */
     .lp-disc-wrapper {
       position: absolute;
-      width: 350px;
-      height: 350px;
-      top: 40px;   /* 세로 가운데 정렬 느낌 */
-      left: 49px;
+      width: 87.5%;   /* 350/400 */
+      height: 87.5%;
+      top: 10%;       /* 40/400 */
+      left: 12.25%;   /* 49/400 */
       z-index: 1;
 
-      /* 기본: 커버 안쪽에 숨어 있음 */
-      transform: translateX(-50px);
+      /* 기본: 커버 안쪽에 숨어 있음 (비율 기준으로 조정) */
+      transform: translateX(-14%);
       transition: transform 0.6s ease;
     }
 
     /* 재생 중일 때만 LP가 밖으로 튀어나옴 */
     .lp-wrapper.playing .lp-disc-wrapper {
-      transform: translateX(230px);
+      transform: translateX(66%);
     }
 
     /* 실제 회전하는 LP 원판 */
@@ -60,7 +59,7 @@
       width: 100%;
       height: 100%;
       border-radius: 50%;
-      background-image: url("lp-image.png");  /* 사용자 LP 이미지 */
+      /* 기본 이미지는 JS에서 설정 (곡마다 변경용) */
       background-size: cover;
       background-position: center;
 
@@ -119,15 +118,37 @@
       "iv9rmTEaECw"  // 3번 곡
     ];
 
+    // 곡별 커버 이미지 / LP 이미지
+    var coverImages = [
+      "lp-cover1.png",
+      "lp-cover2.png",
+      "lp-cover3.png"
+    ];
+
+    var discImages = [
+      "lp-image1.png",
+      "lp-image2.png",
+      "lp-image3.png"
+    ];
+
     var currentIndex   = 0;      // 현재 곡 인덱스
     var player;
     var audioEnabled   = false;  // 사용자 상호작용(첫 클릭) 여부
     var startedOnce    = false;  // 한 번이라도 재생된 적 있는지
     var lpArea         = document.getElementById('lp-area');
+    var lpCover        = document.querySelector('.lp-cover');
+    var lpDisc         = document.querySelector('.lp-disc');
 
     // 클릭/더블클릭 구분용
     var clickTimer     = null;
     var CLICK_DELAY    = 250;    // ms
+
+    // 현재 인덱스에 맞춰 이미지 변경
+    function updateImages() {
+      if (!lpCover || !lpDisc) return;
+      lpCover.style.backgroundImage = 'url("' + coverImages[currentIndex] + '")';
+      lpDisc.style.backgroundImage   = 'url("' + discImages[currentIndex] + '")';
+    }
 
     // 3. API 코드가 로드되면 이 함수가 자동 호출됨
     function onYouTubeIframeAPIReady() {
@@ -150,6 +171,9 @@
 
     // 4. 플레이어 준비 완료 시
     function onPlayerReady(event) {
+      // 첫 로드시 0번 곡 이미지 세팅
+      updateImages();
+
       // 단일 클릭
       lpArea.addEventListener('click', function () {
         if (!audioEnabled) {
@@ -157,7 +181,7 @@
         }
         if (!player) return;
 
-        // 더블클릭 기다리는 중이면 여기선 아무 것도 안 함
+        // 더블클릭 대기 중이면 여기선 아무 것도 안 함
         if (clickTimer) return;
 
         clickTimer = setTimeout(function () {
@@ -221,6 +245,7 @@
     function playCurrent() {
       if (!player) return;
       startedOnce = true;
+      updateImages();
       player.loadVideoById(playlist[currentIndex]);
       player.playVideo();
       lpArea.classList.add('playing');
@@ -230,6 +255,7 @@
     function nextTrack() {
       if (!player) return;
       currentIndex = (currentIndex + 1) % playlist.length; // 마지막 다음 → 0번
+      updateImages();
       player.loadVideoById(playlist[currentIndex]);
       player.playVideo();
       lpArea.classList.add('playing');
@@ -242,13 +268,12 @@
         lpArea.classList.add('playing');
       }
 
-      // 곡이 끝나면 LP가 자동으로 들어가도록
+      // 곡이 끝나면 자동으로 다음 곡 재생
       if (event.data === YT.PlayerState.ENDED) {
-        lpArea.classList.remove('playing');
-        // 끝난 뒤 다음 곡은 사용자가 더블클릭으로 넘김
+        nextTrack();
       }
 
-      // 일시정지 시에도 LP 넣기
+      // 일시정지 시에는 LP 넣기
       if (event.data === YT.PlayerState.PAUSED) {
         lpArea.classList.remove('playing');
       }
