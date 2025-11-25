@@ -21,11 +21,7 @@
       width: 400px;   /* 커버 크기 (필요하면 조정) */
       height: 400px;
       cursor: pointer;
-      transition: transform 0.25s ease;
-    }
-
-    .lp-wrapper:hover {
-      transform: translateY(-4px); /* 살짝 위로 뜨는 느낌 */
+      /* hover 때 transform 제거해서 '움찔거림' 방지 */
     }
 
     /* LP 커버 이미지 */
@@ -49,13 +45,13 @@
       left: 49px;
       z-index: 1;
 
-      /* 기본 상태: LP가 커버 안쪽으로 많이 숨어 있음 (거의 안 보임) */
+      /* 기본: 커버 안쪽에 숨어 있음 */
       transform: translateX(-50px);
       transition: transform 0.6s ease;
     }
 
-    /* hover 시: LP가 오른쪽으로 튀어나와 80% 정도 보이도록 */
-    .lp-wrapper:hover .lp-disc-wrapper {
+    /* 재생 중일 때만 LP가 밖으로 튀어나옴 */
+    .lp-wrapper.playing .lp-disc-wrapper {
       transform: translateX(230px);
     }
 
@@ -72,8 +68,8 @@
       animation-play-state: paused;  /* 기본은 정지 */
     }
 
-    /* hover 시 회전 시작 */
-    .lp-wrapper:hover .lp-disc {
+    /* 재생 중일 때만 회전 시작 */
+    .lp-wrapper.playing .lp-disc {
       animation-play-state: running;
     }
 
@@ -105,33 +101,37 @@
       <div class="lp-disc"></div>
     </div>
 
-  <div class="lp-wrapper" id="lp-area">
-    <div class="lp-cover"></div>
-
-    <div class="lp-disc-wrapper">
-      <div class="lp-disc"></div>
-    </div>
-
-    <!-- 1. 이 div가 유튜브 iframe으로 바뀜 -->
+    <!-- 유튜브 플레이어 (화면에는 안 보임) -->
     <div id="player"></div>
+  </div>
 
   <script>
-    // 2. IFrame Player API를 비동기로 로드 (유튜브 예제 방식)
+    // 1. IFrame Player API를 비동기로 로드
     var tag = document.createElement('script');
     tag.src = "https://www.youtube.com/iframe_api";
     var firstScriptTag = document.getElementsByTagName('script')[0];
     firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
 
-    // 3. API가 로드되면 호출될 전역 변수들
-    var player;
-    var audioEnabled = false; // 사용자가 한 번 클릭했는지 여부
+    // 2. 플레이리스트: 여기 영상 ID들을 넣으면 됨
+    //    예) https://www.youtube.com/watch?v=kAAcl3nIe24 → "kAAcl3nIe24"
+    var playlist = [
+      "kAAcl3nIe24", // 1번 곡
+      // "VIDEO_ID_2", // 2번 곡 (필요하면 주석 해제하고 추가)
+      // "VIDEO_ID_3"
+    ];
 
-    // 4. API 코드가 로드되면 이 함수가 자동 호출됨
+    var currentIndex = 0;     // 현재 곡 인덱스
+    var player;
+    var audioEnabled = false; // 사용자 상호작용(클릭) 여부
+    var startedOnce = false;  // 첫 재생 여부
+    var lpArea = document.getElementById('lp-area');
+
+    // 3. API 코드가 로드되면 이 함수가 자동 호출됨
     function onYouTubeIframeAPIReady() {
       player = new YT.Player('player', {
         height: '0',
         width: '0',
-        videoId: 'kAAcl3nIe24',  // ← 여기에 영상 ID
+        videoId: playlist[0],  // 초기 로드용 (실제 재생은 클릭에서 제어)
         playerVars: {
           'playsinline': 1,
           'autoplay': 0,
@@ -139,41 +139,72 @@
           'rel': 0
         },
         events: {
-          'onReady': onPlayerReady
+          'onReady': onPlayerReady,
+          'onStateChange': onPlayerStateChange
         }
       });
     }
 
-    // 5. 플레이어 준비 완료 시 (자동재생 X, 이벤트만 연결)
+    // 4. 플레이어 준비 완료 시
     function onPlayerReady(event) {
-      var lpArea = document.getElementById('lp-area');
-
-      // 📌 첫 클릭: 브라우저에 "이 요소에서 소리 내도 됨"을 알려줌
       lpArea.addEventListener('click', function () {
+        // 첫 사용자 상호작용 기록 (사운드 허용용)
         if (!audioEnabled) {
           audioEnabled = true;
-          // 살짝 재생했다가 멈출 수도 있지만, 여기선 그냥 재생 상태로 둠
-          if (player && player.playVideo) {
-            player.playVideo();
-          }
         }
-      });
+        if (!player) return;
 
-      // hover 시 재생
-      lpArea.addEventListener('mouseenter', function () {
-        if (audioEnabled && player && player.playVideo) {
-          player.playVideo();
+        // 아직 한 번도 안 틀었으면: 현재 인덱스(0번) 재생
+        if (!startedOnce) {
+          startedOnce = true;
+          playCurrent();
+          return;
         }
-      });
 
-      // hover 해제 시 일시정지
-      lpArea.addEventListener('mouseleave', function () {
-        if (audioEnabled && player && player.pauseVideo) {
-          player.pauseVideo();
-        }
+        // 이미 한 번이라도 재생한 적이 있으면:
+        // 클릭할 때마다 다음 곡으로 넘어감
+        nextTrack();
       });
+    }
+
+    // 현재 인덱스 곡 재생 + LP 애니메이션 ON
+    function playCurrent() {
+      if (!player) return;
+      player.loadVideoById(playlist[currentIndex]);
+      player.playVideo();
+      lpArea.classList.add('playing');
+    }
+
+    // 다음 트랙으로 이동 (마지막 다음 → 첫 곡으로)
+    function nextTrack() {
+      if (!player) return;
+      currentIndex = (currentIndex + 1) % playlist.length; // 마지막 다음 → 0번
+      player.loadVideoById(playlist[currentIndex]);
+      player.playVideo();
+      lpArea.classList.add('playing');
+    }
+
+    // 5. 플레이어 상태 변경 감지
+    function onPlayerStateChange(event) {
+      // 재생 시작되면 LP 나와서 회전
+      if (event.data === YT.PlayerState.PLAYING) {
+        lpArea.classList.add('playing');
+      }
+
+      // 곡이 끝나면 LP가 자동으로 들어가도록
+      if (event.data === YT.PlayerState.ENDED) {
+        lpArea.classList.remove('playing');
+        // 여기서는 자동으로 다음 곡 재생하지 않음
+        // → 사용자가 다시 클릭하면 nextTrack() 호출되면서 다음 곡 재생
+      }
+
+      // 일시정지 시에도 LP 멈추고 들어가고 싶다면 아래 주석 해제
+      /*
+      if (event.data === YT.PlayerState.PAUSED) {
+        lpArea.classList.remove('playing');
+      }
+      */
     }
   </script>
 </body>
 </html>
-
