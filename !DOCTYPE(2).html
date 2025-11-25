@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <title>LP Cover Slide + Rotate</title>
+
+  <style>
+    body {
+      background: #f8f5ef; /* 옅은 베이지. 완전 흰색 원하면 #ffffff 로 변경 */
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      margin: 0;
+      font-family: system-ui, sans-serif;
+    }
+
+    /* 전체 LP 영역 */
+    .lp-wrapper {
+      position: relative;
+      width: 400px;   /* 커버 크기 (필요하면 조정) */
+      height: 400px;
+      cursor: pointer;
+      transition: transform 0.25s ease;
+    }
+
+    .lp-wrapper:hover {
+      transform: translateY(-4px); /* 살짝 위로 뜨는 느낌 */
+    }
+
+    /* LP 커버 이미지 */
+    .lp-cover {
+      position: absolute;
+      inset: 0; /* top/right/bottom/left = 0 */
+      background-image: url("lp-cover.png");  /* 사용자 커버 이미지 */
+      background-size: cover;
+      background-position: center;
+      border-radius: 8px;
+      z-index: 2;
+      pointer-events: none;
+    }
+
+    /* LP판을 감싸는 래퍼: "옆으로 슬라이드"만 담당 */
+    .lp-disc-wrapper {
+      position: absolute;
+      width: 350px;
+      height: 350px;
+      top: 40px;   /* 세로 가운데 정렬 느낌 */
+      left: 49px;
+      z-index: 1;
+
+      /* 기본 상태: LP가 커버 안쪽으로 많이 숨어 있음 (거의 안 보임) */
+      transform: translateX(-50px);
+      transition: transform 0.6s ease;
+    }
+
+    /* hover 시: LP가 오른쪽으로 튀어나와 80% 정도 보이도록 */
+    .lp-wrapper:hover .lp-disc-wrapper {
+      transform: translateX(230px);
+    }
+
+    /* 실제 회전하는 LP 원판 */
+    .lp-disc {
+      width: 100%;
+      height: 100%;
+      border-radius: 50%;
+      background-image: url("lp-image.png");  /* 사용자 LP 이미지 */
+      background-size: cover;
+      background-position: center;
+
+      animation: spin 3.2s linear infinite;
+      animation-play-state: paused;  /* 기본은 정지 */
+    }
+
+    /* hover 시 회전 시작 */
+    .lp-wrapper:hover .lp-disc {
+      animation-play-state: running;
+    }
+
+    /* 회전 애니메이션 (회전만! 위치 X) */
+    @keyframes spin {
+      from { transform: rotate(0deg); }
+      to   { transform: rotate(360deg); }
+    }
+
+    /* 유튜브 iframe 숨김 */
+    #player {
+      position: absolute;
+      width: 0;
+      height: 0;
+      left: -9999px;
+      top: -9999px;
+      border: none;
+    }
+  </style>
+</head>
+
+<body>
+
+  <div class="lp-wrapper" id="lp-area">
+    <div class="lp-cover"></div>
+
+    <!-- 슬라이드 + 회전 LP -->
+    <div class="lp-disc-wrapper">
+      <div class="lp-disc"></div>
+    </div>
+
+  <div class="lp-wrapper" id="lp-area">
+    <div class="lp-cover"></div>
+
+    <div class="lp-disc-wrapper">
+      <div class="lp-disc"></div>
+    </div>
+
+    <!-- 1. 이 div가 유튜브 iframe으로 바뀜 -->
+    <div id="player"></div>
+
+    <div class="hint">
+      한 번 클릭해서 음악 허용 → 마우스를 올리면 회전 + 재생, 떼면 일시정지
+    </div>
+  </div>
+
+  <script>
+    // 2. IFrame Player API를 비동기로 로드 (유튜브 예제 방식)
+    var tag = document.createElement('script');
+    tag.src = "https://www.youtube.com/iframe_api";
+    var firstScriptTag = document.getElementsByTagName('script')[0];
+    firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
+
+    // 3. API가 로드되면 호출될 전역 변수들
+    var player;
+    var audioEnabled = false; // 사용자가 한 번 클릭했는지 여부
+
+    // 4. API 코드가 로드되면 이 함수가 자동 호출됨
+    function onYouTubeIframeAPIReady() {
+      player = new YT.Player('player', {
+        height: '0',
+        width: '0',
+        videoId: 'kAAcl3nIe24',  // ← 여기 당신이 준 영상 ID
+        playerVars: {
+          'playsinline': 1,
+          'autoplay': 0,
+          'controls': 0,
+          'rel': 0
+        },
+        events: {
+          'onReady': onPlayerReady
+        }
+      });
+    }
+
+    // 5. 플레이어 준비 완료 시 (자동재생 X, 이벤트만 연결)
+    function onPlayerReady(event) {
+      var lpArea = document.getElementById('lp-area');
+
+      // 📌 첫 클릭: 브라우저에 "이 요소에서 소리 내도 됨"을 알려줌
+      lpArea.addEventListener('click', function () {
+        if (!audioEnabled) {
+          audioEnabled = true;
+          // 살짝 재생했다가 멈출 수도 있지만, 여기선 그냥 재생 상태로 둠
+          if (player && player.playVideo) {
+            player.playVideo();
+          }
+        }
+      });
+
+      // hover 시 재생
+      lpArea.addEventListener('mouseenter', function () {
+        if (audioEnabled && player && player.playVideo) {
+          player.playVideo();
+        }
+      });
+
+      // hover 해제 시 일시정지
+      lpArea.addEventListener('mouseleave', function () {
+        if (audioEnabled && player && player.pauseVideo) {
+          player.pauseVideo();
+        }
+      });
+    }
+  </script>
+</body>
+</html>
