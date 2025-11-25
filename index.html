@@ -158,13 +158,13 @@
       lpCover.style.opacity = 0; // 먼저 살짝 숨김
       setTimeout(function () {
         lpCover.style.backgroundImage = coverUrl;
-        lpCover.style.opacity = 1; // transition으로 부드럽게 등장
-      }, 110); // 약간의 딜레이 후 이미지 교체 + 페이드 인
+        lpCover.style.opacity = 2s; // transition으로 부드럽게 등장
+      }, 130); // 약간의 딜레이 후 이미지 교체 + 페이드 인
 
       // LP 디스크: 커버보다 조금 늦게 이미지 변경
       setTimeout(function () {
         lpDisc.style.backgroundImage = discUrl;
-      }, 400); // 커버 바뀐 후 약간 뒤에 변경되는 느낌
+      }, 130); // 커버 바뀐 후 약간 뒤에 변경되는 느낌
     }
 
     // 3. API 코드가 로드되면 이 함수가 자동 호출됨
@@ -298,6 +298,3 @@
   </script>
 </body>
 </html>
-
-
-
